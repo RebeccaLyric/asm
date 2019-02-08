@@ -108,7 +108,7 @@ main PROC
 		idiv	ebx
 
 		neg		edx							; Convert remainder to positive number
-		add		edx, edx					; Check for rounding (Resource: Piazza post @121)
+		add		edx, edx					; Check for rounding 
 		cmp		edx, count
 		jg		round_up
 		mov		avg, eax
