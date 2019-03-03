@@ -1,13 +1,14 @@
 TITLE Random Integer Sort     (Prog5.asm)
 
 ; Author:						Rebecca L. Taylor
-; Last Modified:				1 March 2019
+; Last Modified:				3 March 2019
 ; OSU email address:			tayloreb@oregonstate.edu
 ; Course number/section:		CS271-400
 ; Project Number: 5             Due Date: 3 March 2019
-; Description:	This program gets a user request for number of random numbers
-;	to generate. An array is generated, displayed, and sorted using bubble sort. 
-;	The median and sorted array are displayed.
+; Description:	This program gets and validates a user request for number of 
+;	random numbers to generate (from 10 to 200). An array is generated, filled 
+;	with the requested number of random integers from 100 to 999, and sorted in
+;	descdending order (greatest to least). The median and sorted array are displayed.
 
 INCLUDE Irvine32.inc
 
@@ -83,7 +84,7 @@ introduction PROC
 	push	ebp								; Initialize stack frame
 	mov		ebp, esp
 
-	mov		edx, [ebp+12]					; Intro message w/ title and program
+	mov		edx, [ebp+12]					; Intro w/ title and program info
 	call	WriteString
 	call	CrLf
 
@@ -160,62 +161,58 @@ fill_index:
 	add		edi, 4							; Increment array index
 	loop	fill_index
 
+end_fill:
 	pop		ebp
 	ret		8								; Clean up 2 params from stack
 fillArray ENDP
 
 ;------------------------------------------------------------------------------
-;Procedure to sort an array of integers (Resource: Irvine Chapter 9.5.1 Bubble Sort)
+;Procedure to sort an array of integers in descending order
+;(Resource: Irvine Chapter 9.5.1 Bubble Sort)
 ;receives: array index 0 passed by reference, request var passed by value
 ;returns: sorted array with values changed by reference
 ;preconditions: verified user request, existing array with unsorted values
-;registers changed: ebp, eax, ebx, ecx, edx, edi, esi
+;registers changed: ebp, eax, ecx, edx, edi, esi
 ;------------------------------------------------------------------------------
 sortList PROC
 	push	ebp								; Initialize stack frame
 	mov		ebp, esp
-	
-	mov		ecx, 0							; Start index at 0
-	mov		edi, [ebp + 12]					; array[0]
 
-set_indices:
-	mov		eax, ecx						; Hold values for index and index+1
-	mov		ebx, ecx						
-
-inner_loop:
-	inc		ebx								; array[i+1] is number of sorted elements
-	cmp		ebx, [ebp+8]					; If sorted == user request, move to outer
-	je		outer_loop						
-
-	mov		edx, [edi + ebx*4]				; array[i+1] 
-	cmp		edx, [edi + eax*4]				; array[i]
-	jle		inner_loop						; If already sorted move to next elem, else swap
-
-swap_elements:
-	pushad									; Save registers 
-	mov		ecx, 4							; Byte multiplier
-	
-	mov		esi, [ebp + 12]					; Get array[index]							
-	mul		ecx								
-	add		esi, eax					
-
-	mov		eax, ebx						; Get array [index+1]
-	mul		ecx
-	add		edi, eax						 
-
-	push	esi								; Swap array[i] and array[i+1]
-	push	edi
-	call	exchangeElems
-
-	popad									; Restore registers and move to next
-	jmp		inner_loop
+	mov		ecx, [ebp + 8]					; User request-1 as loop counter
+	dec		ecx								
 
 outer_loop:
-	inc		ecx								; Move to next outer loop count
-	cmp		ecx, [ebp + 8]					; Compare to request and end if finished
-	je		end_sort
-	jmp		set_indices						; Move to next array element
+	push	ecx								; Save outer loop count
+	mov		esi, [ebp + 12]					; Array index 0
+	mov		edx, 0							; Index address counter 
+
+inner_loop:									
+	mov		eax, [esi]						; Compare pair of elements
+	cmp		[esi + 4], eax					
+	jle		next_element
+				
+	exchange_elements:
+	pushad									
+	mov		esi, [ebp+12]					; Get array[i]
+	add		esi, edx			
+
+	mov		edi, [ebp+12]					; Get array[i+1]
+	add		edi, edx			
+	add		edi, 4
 	
+	push	esi								; Exchange array[i] and array[i+1]
+	push	edi								
+	call	exchangeElems
+	popad									
+
+	next_element:
+	add		esi, 4							
+	add		edx, 4			
+	loop	inner_loop
+
+	pop		ecx								; Restore outer loop count
+	loop	outer_loop
+
 end_sort:
 	pop		ebp
 	ret		8								; Clean up 2 params from stack
@@ -233,11 +230,11 @@ exchangeElems PROC
 	push	ebp								; Initialize stack frame
 	mov		ebp, esp
 
-	mov		esi, [ebp + 12]					; Address of x
-	mov		edi, [ebp + 8]					; Address of y
+	mov		esi, [ebp + 12]					; Address of array[i]
+	mov		edi, [ebp + 8]					; Address of array[j]
 
-	mov		eax, [esi]						; Value of x
-	mov		ebx, [edi]						; Value of y
+	mov		eax, [esi]						; Value of array[i]
+	mov		ebx, [edi]						; Value of array[j]
 	
 	mov		[edi], eax						; Swap values
 	mov		[esi], ebx
@@ -267,10 +264,10 @@ displayMedian PROC
 
 	mov		esi, [ebp+12]					; Starting array index
 	mov		eax, [ebp + 8]					; User request
-	cdq										; Div by 2 to check even or odd
+	cdq										; Modulus 2 to check even or odd
 	mov		ebx, 2							
 	div		ebx
-	cmp		edx, 0							; Check if remainder is 0
+	cmp		edx, 0							; If remainder is 0
 	je		calculate_even
 
 calculate_odd:								; Median at middle array index
@@ -285,7 +282,7 @@ calculate_even:								; Median is average of two middle indices
 	inc		eax								; Get higher middle index
 	mov		ecx, [esi + eax * 4]
 	
-	mov		eax, ebx						; get average
+	mov		eax, ebx						; Get rounded average
 	add		eax, ecx
 	mov		ebx, 2
 	div		ebx
